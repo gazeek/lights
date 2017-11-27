@@ -4,7 +4,9 @@ from distutils.core import setup, Extension
 from shutil import copyfile
 
 
-lights_module = Extension('lights', sources = ['lights.c'])
+lights_module = Extension('lights',
+						  libraries = ['wiringPi', 'pthread'],
+						  sources = ['lights.c'])
 setup(name = 'Lights',
       version = '1.0',
       description = 'This is lights package',
