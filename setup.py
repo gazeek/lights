@@ -12,4 +12,5 @@ setup(name = 'Lights',
       description = 'This is lights package',
       ext_modules = [lights_module])
 
+print("copying lights.so from build/...")
 copyfile("build/lib.linux-armv6l-2.7/lights.so", "lights.so")
