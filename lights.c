@@ -45,7 +45,7 @@ lights_set(PyObject *self, PyObject *args)
     int newval;
     if (!PyArg_ParseTuple(args, "i", &newval))
         return NULL;
-    printf ("newval: %d\n", newval);
+    // printf ("newval: %d\n", newval);
     softPwmWrite(pin, newval);
     Py_INCREF(Py_None);
     return Py_None;
