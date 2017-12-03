@@ -3,7 +3,11 @@ import curses
 import time
 import RPi.GPIO as GPIO
 import math
+import lights
 print("Hello Wolrd!")
+pin = 17
+range_val = 100
+value = range_val / 2
 
 def fillFunc(fill):
     return (math.exp(fill) - 1) / (math.exp(1) - 1)
@@ -15,7 +19,7 @@ def func(stdscr):
     setOn = GPIO.HIGH
     setOff = GPIO.LOW
     stdscr.addstr("Hello World!")
-    stdscr.nodelay(True)
+    # stdscr.nodelay(True)
     stdscr.refresh()
     xpos = 0
     ypos = 2
@@ -38,6 +42,7 @@ def func(stdscr):
         c = stdscr.getch()
         strobe = False
         if c == ord('q'):
+            lights.set(0)
             break
         elif c == ord("h"):  
             xpos -= step
@@ -56,27 +61,27 @@ def func(stdscr):
             setOn = setOff
             setOff = tmp
         if strobe:
-            GPIO.output(17, setOn)
+            lights.set(range_val)
             time.sleep(0.1)
-            GPIO.output(17, setOff)
+            lights.set(0)
         else:
+        	value = int(float(range_val) * xpos / (maxx -1))
+        	stdscr.addstr(1,0,"%d" % value)
+        	lights.set(value) 
             # set the lights
             #startTime = time.time()
-            fill = fillFunc(1.0 * xpos / (maxx - 1))
-            onTime = max(0, period * fill)
-            offTime = max(0, period * (1 - fill) - cursesUpdateTime)
-            GPIO.output(17, setOn)
-            time.sleep(onTime)
-            GPIO.output(17, setOff)
-            stopTime = time.time()
-            #print(startTime - stopTime)
-            #time.sleep(3)
-            time.sleep(offTime)
+            # fill = fillFunc(1.0 * xpos / (maxx - 1))
+            # onTime = max(0, period * fill)
+            # offTime = max(0, period * (1 - fill) - cursesUpdateTime)
+            # GPIO.output(17, setOn)
+            # time.sleep(onTime)
+            # GPIO.output(17, setOff)
+            # stopTime = time.time()
+            # #print(startTime - stopTime)
+            # #time.sleep(3)
+            # time.sleep(offTime)
 
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(17, GPIO.OUT)
+lights.init(pin, value, range_val)
 
 # Main window function
 curses.wrapper(func)
-
-GPIO.cleanup()
