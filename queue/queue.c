@@ -6,6 +6,7 @@
 static error_state_t queue_element_check_null(queue_t *q, void *element);
 static error_state_t queue_copy_from_next(queue_t *q);
 static error_state_t queue_check_null(queue_t *q);
+static void dumb_buffer_copy(queue_t *qto, queue_t *qfrom, size_t element_count);
 static void * find_last_queue(queue_t *q);
 
 void queue_init(queue_t *q, size_t element_size, size_t capacity)
@@ -109,19 +110,15 @@ static error_state_t queue_copy_from_next(queue_t *q)
         // Check if element size is compatible
 #endif // LIGHTS_QUEUE_UNSAFE
         size_t element_copy_count_back_to_end = q->capacity - q->back_idx;
-        if(element_copy_count_back_to_end > qnext->element_count)
+        if(element_copy_count_back_to_end >= qnext->element_count)
         {
-            memcpy(q->buffer + (q->back_idx * q->element_size),
-                   qnext->buffer + (qnext->front_idx * q->element_size),
-                   qnext->element_count * q->element_size);
-            q->back_idx += qnext->element_count;
-            q->element_count += qnext->element_count;
+            dumb_buffer_copy(q, qnext, qnext->element_count);
         }
         else
         {
-            1;
-        } // we need to split the queue to front / back
-            //FIXME: implement this
+            dumb_buffer_copy(q, qnext, element_copy_count_back_to_end);
+            dumb_buffer_copy(q, qnext, qnext->element_count); // we copy what's left
+        }
         // size_t element_copy_count_begin_to_front = q->front_idx;
         // // FIXME: when copying wraparound is not supported
  
@@ -130,12 +127,27 @@ static error_state_t queue_copy_from_next(queue_t *q)
         //        element_copy_count_begin_to_front * q->element_size);
         // update all inde
 
-        if(q->back_idx >= q->capacity)
-            q->back_idx -= q->capacity;
-
     }
     return ERROR_NONE;
 }
+
+static void dumb_buffer_copy(queue_t *qto, queue_t *qfrom, size_t element_count)
+{
+    // This function is to avoid code duplication
+    // It does not check for anything so watch for SEGFAULTS
+    memcpy(qto->buffer + (qto->back_idx * qto->element_size),
+           qfrom->buffer + (qfrom->front_idx * qto->element_size),
+           element_count * qto->element_size);
+    qto->back_idx += element_count;
+    qto->element_count += element_count;
+    if(qto->back_idx == qto->capacity)
+        qto->back_idx = 0;
+
+    // Update qfrom
+    qfrom->element_count -= element_count;
+    qfrom->front_idx += element_count;
+}
+
 
 // Convenience function
 static error_state_t queue_element_check_null(queue_t *q, void *element)
