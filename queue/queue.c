@@ -5,6 +5,9 @@
 
 #include <pthread.h>
 
+
+
+
 // NOTE: we are using one global lock to lock the next_queue variable for all queues
 static pthread_mutex_t next_queue_lock;
 
@@ -13,9 +16,11 @@ static uint lib_initialized = 0;
 static error_state_t init_queue_lib();
 static error_state_t queue_element_check_null(queue_t *q, void *element);
 static error_state_t queue_check_null(queue_t *q);
-static void dumb_buffer_copy(queue_t *qto, queue_t *qfrom, size_t element_count);
+static void smart_buffer_copy(queue_t *qto, queue_t *qfrom, size_t element_count);
 static void * find_last_queue(queue_t *q);
 
+
+// API functions
 error_state_t queue_init(queue_t *q, size_t element_size, size_t capacity)
 {
     if(q != NULL)
@@ -37,22 +42,19 @@ error_state_t queue_init(queue_t *q, size_t element_size, size_t capacity)
 }
 
 
-error_state_t init_queue_lib()
+void queue_delete(queue_t *q)
 {
-    if(lib_initialized)
-        return ERROR_NONE;
-
-    if(pthread_mutex_init(&next_queue_lock, NULL) != 0)
-    {
-        printf("mutex: lock init failed");
-        return ERROR_MUTEX_FAIL;
-    }
-    return ERROR_NONE;
+    if(q == NULL)
+        return;
+    if(q->buffer == NULL)
+        return;
+    free(q->buffer);
+    q->buffer = NULL;
 }
-
 
 error_state_t queue_push_back(queue_t *q, void *element)
 {
+    // This operation is not thread-safe
 #if !LIGTHS_QUEUE_UNSAFE
     error_state_t es = queue_element_check_null(q, element);
     if(es != ERROR_NONE)
@@ -108,15 +110,6 @@ error_state_t queue_append_queue(queue_t *q, queue_t *append)
     return ERROR_NONE;
 }
 
-static void * find_last_queue(queue_t *q)
-{
-    // FIMXE: do some data validation here
-    queue_t * next_queue = q;
-    while(next_queue->next_queue != NULL)
-        next_queue = next_queue->next_queue;
-    return next_queue;
-}
-
 error_state_t queue_copy_from_next(queue_t *q)
 {
     queue_t *qnext;
@@ -135,32 +128,57 @@ error_state_t queue_copy_from_next(queue_t *q)
         // Check if element size is compatible
 #endif // LIGHTS_QUEUE_UNSAFE
         size_t element_copy_count_back_to_end = q->capacity - q->back_idx;
-        if(element_copy_count_back_to_end >= qnext->element_count)
+        size_t elements_to_copy =
+            min(q->capacity - q->element_count, qnext->element_count);
+        if(element_copy_count_back_to_end >= elements_to_copy)
         {
-            dumb_buffer_copy(q, qnext, qnext->element_count);
+            smart_buffer_copy(q, qnext, elements_to_copy);
         }
         else
         {
-            dumb_buffer_copy(q, qnext, element_copy_count_back_to_end);
-            dumb_buffer_copy(q, qnext, qnext->element_count); // we copy what's left
+            smart_buffer_copy(q, qnext, element_copy_count_back_to_end);
+            // we copy what's left
+            elements_to_copy -= element_copy_count_back_to_end;
+            smart_buffer_copy(q, qnext, elements_to_copy);
         }
-        // size_t element_copy_count_begin_to_front = q->front_idx;
-        // // FIXME: when copying wraparound is not supported
- 
-        // memcpy(q->buffer,
-        //        qnext->buffer + qnext->front_idx + element_copy_count_back_to_end,
-        //        element_copy_count_begin_to_front * q->element_size);
-        // update all inde
 
-        pthread_mutex_lock(&next_queue_lock);
-        //TODO: if qnext becomes empty, remove it from list and update 
-        // appropriate qnext
-        pthread_mutex_unlock(&next_queue_lock);
+        // Update next_queue
+        if(qnext->element_count == 0)
+        {
+            pthread_mutex_lock(&next_queue_lock);
+            q->next_queue = qnext->next_queue;
+            queue_delete(qnext);
+            pthread_mutex_unlock(&next_queue_lock);
+        }
     }
     return ERROR_NONE;
 }
 
-static void dumb_buffer_copy(queue_t *qto, queue_t *qfrom, size_t element_count)
+// Convenience function
+static void * find_last_queue(queue_t *q)
+{
+    // FIMXE: do some data validation here
+    queue_t * next_queue = q;
+    while(next_queue->next_queue != NULL)
+        next_queue = next_queue->next_queue;
+    return next_queue;
+}
+
+static error_state_t init_queue_lib()
+{
+    if(lib_initialized)
+        return ERROR_NONE;
+
+    if(pthread_mutex_init(&next_queue_lock, NULL) != 0)
+    {
+        printf("mutex: lock init failed");
+        return ERROR_MUTEX_FAIL;
+    }
+    lib_initialized = 1;
+    return ERROR_NONE;
+}
+
+static void smart_buffer_copy(queue_t *qto, queue_t *qfrom, size_t element_count)
 {
     // This function is to avoid code duplication
     // It does not check for anything so watch for SEGFAULTS
@@ -177,8 +195,6 @@ static void dumb_buffer_copy(queue_t *qto, queue_t *qfrom, size_t element_count)
     qfrom->front_idx += element_count;
 }
 
-
-// Convenience function
 static error_state_t queue_element_check_null(queue_t *q, void *element)
 {
     if(element == NULL)

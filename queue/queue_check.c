@@ -182,6 +182,119 @@ Ensure(lights_queue, append_queue_copies_new_queue_wraps_around)
                 is_equal_to_contents_of(brightness_out, sizeof(brightness_out)));
 }
 
+Ensure(lights_queue, queue_copy_from_next_can_execute_partial_copy)
+{
+    queue_t q, qnext;
+    element_t e;
+    size_t i;
+    size_t cap = 10;
+    size_t four = 4;
+    queue_init(&q, sizeof(e), cap);
+    queue_init(&qnext, sizeof(e), four);
+    unsigned int time_ms_in[four * 2];
+    unsigned int time_ms_out[four * 2];
+    unsigned int brightness_in[four * 2];
+    unsigned int brightness_out[four * 2];
+
+    e.time_ms = 1000;
+    e.brightness = 2000;
+    for(i = 0; i < four; i++)
+        queue_push_back(&q, &e);
+
+    for(i = 0; i < four; i++)
+    {
+        time_ms_in[i] = i;
+        e.time_ms = time_ms_in[i];
+        brightness_in[i] = i * 10;
+        e.brightness = brightness_in[i];
+        queue_push_back(&q, &e);
+    }
+
+    for(i = four; i < 2 * four; i++)
+    {
+        time_ms_in[i] = i;
+        e.time_ms = time_ms_in[i];
+        brightness_in[i] = i * 10;
+        e.brightness = brightness_in[i];
+        queue_push_back(&qnext, &e);
+    }
+
+    queue_append_queue(&q, &qnext);
+    queue_copy_from_next(&q);
+
+    for(i = 0; i < four; i++)
+    {
+        queue_pop_front(&q, &e);
+        assert_that(e.time_ms, is_equal_to(1000));
+        assert_that(e.brightness, is_equal_to(2000));
+    }
+
+    for (i = 0; i < four * 2; i++)
+    {
+        queue_pop_front(&q, &e);
+        time_ms_out[i] = e.time_ms;
+        brightness_out[i] = e.brightness;
+        queue_copy_from_next(&q);
+    } 
+    assert_that(time_ms_in, 
+                is_equal_to_contents_of(time_ms_out, sizeof(time_ms_out)));
+    assert_that(brightness_in,
+                is_equal_to_contents_of(brightness_out, sizeof(brightness_out)));
+}
+
+
+Ensure(lights_queue, appending_multiple_queues_works)
+{
+    queue_t q, qnext, qnext2;
+    element_t e;
+    size_t i;
+    size_t cap = 10;
+    size_t four = 4;
+    queue_init(&q, sizeof(e), cap);
+    queue_init(&qnext, sizeof(e), four);
+    queue_init(&qnext2, sizeof(e), four);
+    unsigned int time_ms_in[four * 2];
+    unsigned int time_ms_out[four * 2];
+    unsigned int brightness_in[four * 2];
+    unsigned int brightness_out[four * 2];
+
+    for(i = 0; i < four; i++)
+    {
+        time_ms_in[i] = i;
+        e.time_ms = time_ms_in[i];
+        brightness_in[i] = i * 10;
+        e.brightness = brightness_in[i];
+        queue_push_back(&qnext, &e);
+    }
+
+    for(i = four; i < 2 * four; i++)
+    {
+        time_ms_in[i] = i;
+        e.time_ms = time_ms_in[i];
+        brightness_in[i] = i * 10;
+        e.brightness = brightness_in[i];
+        queue_push_back(&qnext2, &e);
+    }
+
+    queue_append_queue(&q, &qnext);
+    queue_append_queue(&q, &qnext2);
+    queue_copy_from_next(&q);
+    queue_copy_from_next(&q);
+
+    for (i = 0; i < four * 2; i++)
+    {
+        queue_pop_front(&q, &e);
+        time_ms_out[i] = e.time_ms;
+        brightness_out[i] = e.brightness;
+        queue_copy_from_next(&q);
+    } 
+    assert_that(time_ms_in, 
+                is_equal_to_contents_of(time_ms_out, sizeof(time_ms_out)));
+    assert_that(brightness_in,
+                is_equal_to_contents_of(brightness_out, sizeof(brightness_out)));
+}
+
+
 
 
 

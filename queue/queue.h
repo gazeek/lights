@@ -5,6 +5,16 @@
 #define LIGHTS_QUEUE_UNSAFE 0
 #define VERBOSE 0
 
+#define max(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
+#define min(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
+
+
 enum error_state {
     ERROR_NONE,
     ERROR_NULL_QUEUE,
@@ -33,8 +43,18 @@ typedef struct{
 } queue_t;
 
 error_state_t queue_init(queue_t *q, size_t element_size, size_t size);
+void queue_delete(queue_t *q);
+
+// This operation is not thread-safe
 error_state_t queue_push_back(queue_t *q, void *element);
+
+// This function is thread safe if accessed from only on thread
+// That is, you can use all other thread safe functions and they will not interfere
+// with this function
 error_state_t queue_pop_front(queue_t *q, void *element);
+
+
+// The following functions are completely thread-safe:
 error_state_t queue_append_queue(queue_t *q, queue_t *append);
 error_state_t queue_copy_from_next(queue_t *q);
 
