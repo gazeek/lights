@@ -2,9 +2,14 @@
 C_FILES = $(wildcard *.c)
 C_OBJECTS = $(patsubst %.c,%.o,$(C_FILES))
 
-.PHONY: all test gdb
+.PHONY: help test gdb
  
-all: all_tests.so
+help:
+	@echo "There are several ways of using this makefile:"
+	@echo "1. 'make test' will run the tests as a shared library using the cgreen-runner"
+	@echo "2. 'make gdb' will compile the tests and launch gdb for the test(s) in the main() funciton."
+	@echo "3. 'make all_tests' will compile the tests and you can run the test(s) that are in the main() function."
+
 gdb: all_tests
 	gdb ./all_tests
 all_tests: $(C_OBJECTS)
