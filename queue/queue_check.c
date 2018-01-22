@@ -115,6 +115,7 @@ Ensure(lights_queue, append_queue_copies_new_queue)
     }
 
     queue_append_queue(&q, &qnext);
+    queue_copy_from_next(&q);
 
     for (i = 0; i < four * 2; i++)
     {
@@ -167,6 +168,7 @@ Ensure(lights_queue, append_queue_copies_new_queue_wraps_around)
     }
 
     queue_append_queue(&q, &qnext);
+    queue_copy_from_next(&q);
 
     for (i = 0; i < four * 2; i++)
     {
@@ -186,6 +188,6 @@ Ensure(lights_queue, append_queue_copies_new_queue_wraps_around)
 int main()
 {
     TestSuite *suite = create_test_suite();
-    add_test_with_context(suite, lights_queue, append_queue_copies_new_queue);
-    return run_single_test(suite, "append_queue_copies_new_queue", create_text_reporter());
+    add_test_with_context(suite, lights_queue, append_queue_copies_new_queue_wraps_around);
+    return run_single_test(suite, "append_queue_copies_new_queue_wraps_around", create_text_reporter());
 }

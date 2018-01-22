@@ -3,19 +3,29 @@
 #include <string.h>
 #include "queue.h"
 
+#include <pthread.h>
+
+// NOTE: we are using one global lock to lock the next_queue variable for all queues
+static pthread_mutex_t next_queue_lock;
+
+static uint lib_initialized = 0;
+
+static error_state_t init_queue_lib();
 static error_state_t queue_element_check_null(queue_t *q, void *element);
-static error_state_t queue_copy_from_next(queue_t *q);
 static error_state_t queue_check_null(queue_t *q);
 static void dumb_buffer_copy(queue_t *qto, queue_t *qfrom, size_t element_count);
 static void * find_last_queue(queue_t *q);
 
-void queue_init(queue_t *q, size_t element_size, size_t capacity)
+error_state_t queue_init(queue_t *q, size_t element_size, size_t capacity)
 {
     if(q != NULL)
     {
         q->buffer = (unsigned char *) malloc(capacity * element_size);
         if(q->buffer == NULL)
+        {
             printf("malloc: failed to allocate memory for queue buffer\n");
+            return ERROR_MALLOC_FAIL;
+        }
         q->capacity = capacity;
         q->element_count = 0;
         q->element_size = element_size;
@@ -23,7 +33,23 @@ void queue_init(queue_t *q, size_t element_size, size_t capacity)
         q->back_idx = 0;
         q->next_queue = NULL;
     }
+    return init_queue_lib();
 }
+
+
+error_state_t init_queue_lib()
+{
+    if(lib_initialized)
+        return ERROR_NONE;
+
+    if(pthread_mutex_init(&next_queue_lock, NULL) != 0)
+    {
+        printf("mutex: lock init failed");
+        return ERROR_MUTEX_FAIL;
+    }
+    return ERROR_NONE;
+}
+
 
 error_state_t queue_push_back(queue_t *q, void *element)
 {
@@ -67,8 +93,6 @@ error_state_t queue_pop_front(queue_t *q, void *element)
         q->front_idx = 0;
     q->element_count--;
 
-    // here we add mutex and copy from the next queue
-
     return ERROR_NONE;
 }
 
@@ -76,10 +100,11 @@ error_state_t queue_pop_front(queue_t *q, void *element)
 error_state_t queue_append_queue(queue_t *q, queue_t *append)
 {
     // FIMXE: do some data validation here
+    // TODO: especially check if element_size is compatible
+    pthread_mutex_lock(&next_queue_lock);
     queue_t * last_q = find_last_queue(q);
     last_q->next_queue = append;
-    if(q->element_count * 2 < q->capacity)
-        queue_copy_from_next(q);
+    pthread_mutex_unlock(&next_queue_lock);
     return ERROR_NONE;
 }
 
@@ -92,7 +117,7 @@ static void * find_last_queue(queue_t *q)
     return next_queue;
 }
 
-static error_state_t queue_copy_from_next(queue_t *q)
+error_state_t queue_copy_from_next(queue_t *q)
 {
     queue_t *qnext;
 #if !LIGHTS_QUEUE_UNSAFE
@@ -127,6 +152,10 @@ static error_state_t queue_copy_from_next(queue_t *q)
         //        element_copy_count_begin_to_front * q->element_size);
         // update all inde
 
+        pthread_mutex_lock(&next_queue_lock);
+        //TODO: if qnext becomes empty, remove it from list and update 
+        // appropriate qnext
+        pthread_mutex_unlock(&next_queue_lock);
     }
     return ERROR_NONE;
 }
