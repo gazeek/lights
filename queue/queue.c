@@ -37,10 +37,26 @@ error_state_t queue_init(queue_t *q, size_t element_size, size_t capacity)
         q->front_idx = 0;
         q->back_idx = 0;
         q->next_queue = NULL;
+        q->must_be_deallocated = 0;
     }
     return init_queue_lib();
 }
 
+void *create_queue(size_t element_size, size_t capacity)
+{
+	queue_t *q;
+	q = (queue_t *)malloc(sizeof(queue_t));
+	if (q == NULL)
+	{
+		printf("malloc: failed to allocate memory for queue");
+		return NULL;
+	}
+	error_state_t ret = queue_init(q, element_size, capacity);
+	if(ret != ERROR_NONE)
+		return NULL;
+	q->must_be_deallocated = 1;
+	return q;
+}
 
 void queue_delete(queue_t *q)
 {
@@ -50,6 +66,8 @@ void queue_delete(queue_t *q)
         return;
     free(q->buffer);
     q->buffer = NULL;
+    if(q->must_be_deallocated)
+    	free(q);
 }
 
 error_state_t queue_push_back(queue_t *q, void *element)

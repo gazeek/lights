@@ -23,7 +23,7 @@ enum error_state {
     ERROR_EMPTY_QUEUE,
     ERROR_FULL_QUEUE,
     ERROR_MALLOC_FAIL,
-    ERROR_MUTEX_FAIL
+    ERROR_MUTEX_FAIL,
 };
 typedef enum error_state error_state_t;
 
@@ -40,9 +40,11 @@ typedef struct{
     size_t element_size;
     unsigned char *buffer;
     void * next_queue; // TODO:this can allow for asynchronous queue addition
+    unsigned char must_be_deallocated; // used to determine if queue needs to be freed
 } queue_t;
 
 error_state_t queue_init(queue_t *q, size_t element_size, size_t size);
+void *create_queue(size_t element_size, size_t capacity);
 void queue_delete(queue_t *q);
 
 // This operation is not thread-safe
