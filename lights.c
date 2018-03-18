@@ -144,11 +144,11 @@ static PyMethodDef LightsMethods[] = {
 };
 
 PyMODINIT_FUNC
-initlights(void)
+init_lights(void)
 {
     PyObject *m;
 
-    m = Py_InitModule("lights", LightsMethods);
+    m = Py_InitModule("_lights", LightsMethods);
     if(m == NULL)
         return;
 
