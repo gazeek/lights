@@ -1,7 +1,7 @@
 #include <Python.h>
 #include <wiringPi.h>
 #include <softPwm.h>
-
+#include "queue.h"
 
 static PyObject *LightsError;
 
@@ -75,7 +75,7 @@ lights_set(PyObject *self, PyObject *args)
     // Input validation
     if (setting < 0 || setting > 99)
     {
-        PyErr_SetString(LightsError,
+        PyErr_SetString(PyExc_ValueError,
                         "Setting must be an integer in range <0,99> inclusive.");
         return NULL;
     }
@@ -87,10 +87,59 @@ lights_set(PyObject *self, PyObject *args)
     return Py_None;
 }
 
+static PyObject *
+lights_load_vals(PyObject *self, PyObject *args)
+{
+    char *wrongInputMsg = "Input must be a list of tuples of ints.";
+    queue_t *queue;
+    Py_ssize_t i;
+    PyObject *list;
+    if (!PyArg_ParseTuple(args, "O:load_vals", &list))
+        return NULL;
+    if (!PyList_Check(list))
+    {
+        PyErr_SetString(PyExc_ValueError, wrongInputMsg);
+        return NULL;
+    }
+    queue = create_queue(sizeof(element_t), PyList_Size(list));
+    // Input validation
+    for( i = 0; i < PyList_Size(list); i++)
+    {
+        PyObject *tmp = PyList_GetItem(list, i);
+        unsigned int time_ms, brightness;
+        element_t el;
+        char msgBuffer [100];
+        if(!tmp)
+            return NULL;
+        if(!PyTuple_Check(tmp))
+        {
+            PyErr_SetString(PyExc_ValueError, wrongInputMsg);
+            queue_delete(queue);
+            return NULL;
+        }
+        sprintf(msgBuffer,"I|I;item %d in input list is not tuple: (int, int).", i);
+        if (!PyArg_ParseTuple(tmp, msgBuffer,
+                              &el.time_ms, &el.brightness))
+        {
+            queue_delete(queue);
+            return NULL;
+        }
+        queue_push_back(queue, &el);
+    }
+    queue_flush_and_print(queue);
+
+    queue_delete(queue);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+
 static PyMethodDef LightsMethods[] = {
     {"init", lights_init, METH_VARARGS, "Initiate Lights Module."},
     {"fill", lights_fill, METH_VARARGS, "Set PWM fill value."},
     {"set", lights_set, METH_VARARGS, "Set setting (will be converted to PWM value)."},
+    {"load_vals", lights_load_vals, METH_VARARGS,
+        "Changes brightness using list of (time_ms, birghtness)"},
     {NULL, NULL, 0 ,NULL} /*Sentinel*/
 };
 

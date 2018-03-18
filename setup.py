@@ -6,7 +6,8 @@ from shutil import copyfile
 
 lights_module = Extension('lights',
 						  libraries = ['wiringPi', 'pthread'],
-						  sources = ['lights.c'])
+                          include_dirs = ['queue'],
+						  sources = ['lights.c', 'queue/queue.c'])
 setup(name = 'Lights',
       version = '1.0',
       description = 'This is lights package',

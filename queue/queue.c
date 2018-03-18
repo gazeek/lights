@@ -117,6 +117,17 @@ error_state_t queue_pop_front(queue_t *q, void *element)
 }
 
 
+error_state_t queue_flush_and_print(queue_t * q)
+{
+	element_t el;
+	while(q->element_count)
+	{
+		queue_pop_front(q, &el);
+		printf("time_ms: %d, brightness: %d\n", el.time_ms, el.brightness);
+	}
+}
+
+
 error_state_t queue_append_queue(queue_t *q, queue_t *append)
 {
     // FIMXE: do some data validation here
