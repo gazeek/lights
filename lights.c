@@ -133,7 +133,6 @@ lights_load_vals(PyObject *self, PyObject *args)
     return Py_None;
 }
 
-
 static PyMethodDef LightsMethods[] = {
     {"init", lights_init, METH_VARARGS, "Initiate Lights Module."},
     {"fill", lights_fill, METH_VARARGS, "Set PWM fill value."},
